@@ -52,17 +52,17 @@ st.markdown("""
 def load_data():
     """Load all CSV files from Dataset folder"""
     try:
-        campaign_performance = pd.read_csv('Dataset/campaign_performance.csv')
-        channel_attribution = pd.read_csv('Dataset/channel_attribution.csv')
-        correlation_matrix = pd.read_csv('Dataset/correlation_matrix.csv')
-        customer_data = pd.read_csv('Dataset/customer_data.csv')
-        customer_journey = pd.read_csv('Dataset/customer_journey.csv')
-        feature_importance = pd.read_csv('Dataset/feature_importance.csv')
-        funnel_data = pd.read_csv('Dataset/funnel_data.csv')
-        geographic_data = pd.read_csv('Dataset/geographic_data.csv')
-        lead_scoring_results = pd.read_csv('Dataset/lead_scoring_results.csv')
-        learning_curve = pd.read_csv('Dataset/learning_curve.csv')
-        product_sales = pd.read_csv('Dataset/product_sales.csv')
+        campaign_performance = pd.read_csv('campaign_performance.csv')
+        channel_attribution = pd.read_csv('channel_attribution.csv')
+        correlation_matrix = pd.read_csv('correlation_matrix.csv')
+        customer_data = pd.read_csv('customer_data.csv')
+        customer_journey = pd.read_csv('customer_journey.csv')
+        feature_importance = pd.read_csv('feature_importance.csv')
+        funnel_data = pd.read_csv('funnel_data.csv')
+        geographic_data = pd.read_csv('geographic_data.csv')
+        lead_scoring_results = pd.read_csv('lead_scoring_results.csv')
+        learning_curve = pd.read_csv('learning_curve.csv')
+        product_sales = pd.read_csv('product_sales.csv')
         
         return {
             'campaign_performance': campaign_performance,
@@ -518,3 +518,4 @@ st.markdown("""
         <p>Data-driven insights for better marketing decisions</p>
     </div>
     """, unsafe_allow_html=True)
+
