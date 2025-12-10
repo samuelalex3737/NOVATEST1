@@ -2,9 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
-from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -16,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
     <style>
     .main {
@@ -36,56 +34,62 @@ st.markdown("""
         color: #2c3e50;
         padding-top: 20px;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        padding-left: 20px;
-        padding-right: 20px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# Load data function with caching
+# Load data function with better error handling
 @st.cache_data
 def load_data():
     """Load all CSV files from Dataset folder"""
-    try:
-        campaign_performance = pd.read_csv('campaign_performance.csv')
-        channel_attribution = pd.read_csv('channel_attribution.csv')
-        correlation_matrix = pd.read_csv('correlation_matrix.csv')
-        customer_data = pd.read_csv('customer_data.csv')
-        customer_journey = pd.read_csv('customer_journey.csv')
-        feature_importance = pd.read_csv('feature_importance.csv')
-        funnel_data = pd.read_csv('funnel_data.csv')
-        geographic_data = pd.read_csv('geographic_data.csv')
-        lead_scoring_results = pd.read_csv('lead_scoring_results.csv')
-        learning_curve = pd.read_csv('learning_curve.csv')
-        product_sales = pd.read_csv('product_sales.csv')
+    data_dict = {}
+    
+    files = {
+        'campaign_performance': 'campaign_performance.csv',
+        'channel_attribution': 'channel_attribution.csv',
+        'correlation_matrix': 'correlation_matrix.csv',
+        'customer_data': 'customer_data.csv',
+        'customer_journey': 'customer_journey.csv',
+        'feature_importance': 'feature_importance.csv',
+        'funnel_data': 'funnel_data.csv',
+        'geographic_data': 'geographic_data.csv',
+        'lead_scoring_results': 'lead_scoring_results.csv',
+        'learning_curve': 'learning_curve.csv',
+        'product_sales': 'product_sales.csv'
+    }
+    
+    errors = []
+    
+    for key, filepath in files.items():
+        try:
+            data_dict[key] = pd.read_csv(filepath)
+            st.sidebar.success(f"✅ Loaded {key}")
+        except FileNotFoundError:
+            errors.append(f"❌ File not found: {filepath}")
+            st.sidebar.error(f"❌ Missing: {key}")
+        except Exception as e:
+            errors.append(f"❌ Error loading {key}: {str(e)}")
+            st.sidebar.error(f"❌ Error: {key}")
+    
+    if errors:
+        st.error("### Errors loading data:")
+        for error in errors:
+            st.error(error)
         
-        return {
-            'campaign_performance': campaign_performance,
-            'channel_attribution': channel_attribution,
-            'correlation_matrix': correlation_matrix,
-            'customer_data': customer_data,
-            'customer_journey': customer_journey,
-            'feature_importance': feature_importance,
-            'funnel_data': funnel_data,
-            'geographic_data': geographic_data,
-            'lead_scoring_results': lead_scoring_results,
-            'learning_curve': learning_curve,
-            'product_sales': product_sales
-        }
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        st.info("Please ensure all CSV files are in the 'Dataset' folder")
+        st.info("""
+        ### Troubleshooting:
+        1. Check that all CSV files are in the 'Dataset' folder
+        2. Verify file names match exactly (case-sensitive)
+        3. Ensure files are not corrupted
+        """)
         return None
+    
+    return data_dict
 
-# Load all data
-data = load_data()
+# Load data
+with st.spinner("Loading data..."):
+    data = load_data()
 
-if data is None:
+if data is None or len(data) == 0:
     st.stop()
 
 # Sidebar
@@ -94,7 +98,6 @@ with st.sidebar:
     st.title("📊 Marketing Analytics")
     st.markdown("---")
     
-    # Analysis selector
     st.subheader("Select Analysis View")
     analysis_type = st.selectbox(
         "Choose Analysis Type",
@@ -104,247 +107,175 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.info("💡 **Tip**: Explore different views to gain insights")
+    st.info("💡 **Tip**: Explore different views")
 
 # Main content
 st.title("🎯 Marketing Analytics Dashboard")
 st.markdown("### Comprehensive Marketing Performance Analysis")
+
+# Helper function to safely get column
+def safe_column(df, possible_names):
+    """Return first matching column name from list"""
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    return None
 
 # Overview Section
 if analysis_type == "Overview":
     st.header("📈 Executive Summary")
     
     # KPI Metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         total_customers = len(data['customer_data'])
         st.metric("Total Customers", f"{total_customers:,}")
     
     with col2:
-        if 'Revenue' in data['product_sales'].columns:
-            total_revenue = data['product_sales']['Revenue'].sum()
-            st.metric("Total Revenue", f"${total_revenue:,.0f}")
-        elif 'Sales' in data['product_sales'].columns:
-            total_sales = data['product_sales']['Sales'].sum()
+        # Try different column names for revenue/sales
+        sales_col = safe_column(data['product_sales'], ['Revenue', 'Sales', 'Total_Sales', 'Amount'])
+        if sales_col:
+            total_sales = data['product_sales'][sales_col].sum()
             st.metric("Total Sales", f"${total_sales:,.0f}")
+        else:
+            st.metric("Total Products", len(data['product_sales']))
     
     with col3:
         total_campaigns = len(data['campaign_performance'])
         st.metric("Total Campaigns", total_campaigns)
     
     with col4:
-        if 'ConversionRate' in data['funnel_data'].columns:
-            avg_conversion = data['funnel_data']['ConversionRate'].mean()
-            st.metric("Avg Conversion Rate", f"{avg_conversion:.2f}%")
-        elif 'Conversions' in data['funnel_data'].columns:
-            total_conversions = data['funnel_data']['Conversions'].sum()
-            st.metric("Total Conversions", f"{total_conversions:,}")
-    
-    with col5:
-        if 'LeadScore' in data['lead_scoring_results'].columns:
-            avg_lead_score = data['lead_scoring_results']['LeadScore'].mean()
+        lead_score_col = safe_column(data['lead_scoring_results'], ['LeadScore', 'Score', 'Lead_Score'])
+        if lead_score_col:
+            avg_lead_score = data['lead_scoring_results'][lead_score_col].mean()
             st.metric("Avg Lead Score", f"{avg_lead_score:.2f}")
+        else:
+            st.metric("Total Leads", len(data['lead_scoring_results']))
     
     st.markdown("---")
     
-    # Display sample data from each dataset
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📊 Campaign Performance Overview")
-        st.dataframe(data['campaign_performance'].head(10), use_container_width=True)
-    
-    with col2:
-        st.subheader("👥 Customer Data Sample")
-        st.dataframe(data['customer_data'].head(10), use_container_width=True)
-    
-    # Visualizations
-    st.markdown("---")
+    # Display datasets info
+    st.subheader("📊 Available Datasets")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Product Sales Distribution")
-        if 'Product' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
-            fig = px.bar(data['product_sales'].head(10), 
-                        x='Product', y='Sales',
-                        color='Sales',
-                        color_continuous_scale='Blues')
-            fig.update_xaxis(tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
+        st.info(f"""
+        **Loaded Datasets:**
+        - Campaign Performance: {len(data['campaign_performance'])} rows
+        - Customer Data: {len(data['customer_data'])} rows
+        - Product Sales: {len(data['product_sales'])} rows
+        - Geographic Data: {len(data['geographic_data'])} rows
+        - Lead Scoring: {len(data['lead_scoring_results'])} rows
+        """)
     
     with col2:
-        st.subheader("Geographic Distribution")
-        if 'Region' in data['geographic_data'].columns:
-            region_dist = data['geographic_data']['Region'].value_counts().reset_index()
-            region_dist.columns = ['Region', 'Count']
-            fig = px.pie(region_dist, values='Count', names='Region', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
+        st.info(f"""
+        **Additional Data:**
+        - Channel Attribution: {len(data['channel_attribution'])} rows
+        - Customer Journey: {len(data['customer_journey'])} rows
+        - Funnel Data: {len(data['funnel_data'])} rows
+        - Feature Importance: {len(data['feature_importance'])} rows
+        """)
+    
+    # Show sample data
+    st.markdown("---")
+    st.subheader("📋 Sample Data Preview")
+    
+    dataset_to_show = st.selectbox("Select dataset to preview:", list(data.keys()))
+    st.dataframe(data[dataset_to_show].head(10), use_container_width=True)
+    
+    # Show column names
+    with st.expander("📝 View Column Names"):
+        st.write(f"**Columns in {dataset_to_show}:**")
+        st.write(list(data[dataset_to_show].columns))
 
-# Customer Analysis Section
+# Customer Analysis
 elif analysis_type == "Customer Analysis":
     st.header("👥 Customer Analysis")
     
-    # Display customer data info
-    st.subheader("Customer Data Overview")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Customers", len(data['customer_data']))
-    
-    with col2:
-        if 'Age' in data['customer_data'].columns:
-            avg_age = data['customer_data']['Age'].mean()
-            st.metric("Average Age", f"{avg_age:.1f}")
-    
-    with col3:
-        if 'Income' in data['customer_data'].columns:
-            avg_income = data['customer_data']['Income'].mean()
-            st.metric("Avg Income", f"${avg_income:,.0f}")
-    
-    st.markdown("---")
-    
-    # Tabs for different analyses
-    tab1, tab2, tab3 = st.tabs(["Customer Demographics", "Data Table", "Statistics"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Age distribution if available
-            if 'Age' in data['customer_data'].columns:
-                st.subheader("Age Distribution")
-                fig = px.histogram(data['customer_data'], x='Age', 
-                                 nbins=30, color_discrete_sequence=['#1f77b4'])
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # Income distribution if available
-            if 'Income' in data['customer_data'].columns:
-                st.subheader("Income Distribution")
-                fig = px.box(data['customer_data'], y='Income',
-                           color_discrete_sequence=['#2ecc71'])
-                st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        st.subheader("Customer Data Table")
-        st.dataframe(data['customer_data'], use_container_width=True)
-    
-    with tab3:
-        st.subheader("Statistical Summary")
-        st.dataframe(data['customer_data'].describe(), use_container_width=True)
-
-# Campaign Performance Section
-elif analysis_type == "Campaign Performance":
-    st.header("📢 Campaign Performance Analysis")
+    df = data['customer_data']
     
     # KPIs
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Campaigns", len(data['campaign_performance']))
+        st.metric("Total Customers", len(df))
     
     with col2:
-        if 'Budget' in data['campaign_performance'].columns:
-            total_budget = data['campaign_performance']['Budget'].sum()
-            st.metric("Total Budget", f"${total_budget:,.0f}")
+        age_col = safe_column(df, ['Age', 'age', 'Customer_Age'])
+        if age_col:
+            st.metric("Avg Age", f"{df[age_col].mean():.1f}")
     
     with col3:
-        if 'Conversions' in data['campaign_performance'].columns:
-            total_conversions = data['campaign_performance']['Conversions'].sum()
-            st.metric("Total Conversions", f"{total_conversions:,}")
+        income_col = safe_column(df, ['Income', 'income', 'Annual_Income', 'Salary'])
+        if income_col:
+            st.metric("Avg Income", f"${df[income_col].mean():,.0f}")
     
     with col4:
-        if 'ROI' in data['campaign_performance'].columns:
-            avg_roi = data['campaign_performance']['ROI'].mean()
-            st.metric("Average ROI", f"{avg_roi:.2f}%")
+        st.metric("Total Columns", len(df.columns))
     
     st.markdown("---")
     
-    # Visualizations
-    tab1, tab2, tab3 = st.tabs(["Performance Metrics", "Data Table", "Trends"])
+    # Tabs
+    tab1, tab2, tab3 = st.tabs(["Visualizations", "Data Table", "Statistics"])
     
     with tab1:
         col1, col2 = st.columns(2)
         
         with col1:
-            if 'CampaignName' in data['campaign_performance'].columns and 'Conversions' in data['campaign_performance'].columns:
-                st.subheader("Conversions by Campaign")
-                fig = px.bar(data['campaign_performance'], 
-                           x='CampaignName', y='Conversions',
-                           color='Conversions',
-                           color_continuous_scale='Viridis')
-                fig.update_xaxis(tickangle=-45)
+            # Age distribution
+            age_col = safe_column(df, ['Age', 'age', 'Customer_Age'])
+            if age_col:
+                st.subheader("Age Distribution")
+                fig = px.histogram(df, x=age_col, nbins=30, 
+                                 color_discrete_sequence=['#1f77b4'])
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Age column not found")
         
         with col2:
-            if 'Budget' in data['campaign_performance'].columns and 'ROI' in data['campaign_performance'].columns:
-                st.subheader("Budget vs ROI")
-                fig = px.scatter(data['campaign_performance'], 
-                               x='Budget', y='ROI',
-                               size='Conversions' if 'Conversions' in data['campaign_performance'].columns else None,
-                               color='ROI',
-                               color_continuous_scale='RdYlGn')
+            # Income distribution
+            income_col = safe_column(df, ['Income', 'income', 'Annual_Income'])
+            if income_col:
+                st.subheader("Income Distribution")
+                fig = px.box(df, y=income_col, color_discrete_sequence=['#2ecc71'])
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Income column not found")
     
     with tab2:
-        st.subheader("Campaign Performance Data")
-        st.dataframe(data['campaign_performance'], use_container_width=True)
+        st.dataframe(df, use_container_width=True)
     
     with tab3:
-        st.subheader("Statistical Summary")
-        st.dataframe(data['campaign_performance'].describe(), use_container_width=True)
+        st.dataframe(df.describe(), use_container_width=True)
 
-# Channel Attribution Section
-elif analysis_type == "Channel Attribution":
-    st.header("📱 Channel Attribution Analysis")
+# Campaign Performance
+elif analysis_type == "Campaign Performance":
+    st.header("📢 Campaign Performance Analysis")
     
-    st.subheader("Channel Performance Overview")
+    df = data['campaign_performance']
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if 'Channel' in data['channel_attribution'].columns and 'Conversions' in data['channel_attribution'].columns:
-            st.subheader("Conversions by Channel")
-            fig = px.bar(data['channel_attribution'], 
-                       x='Channel', y='Conversions',
-                       color='Conversions',
-                       color_continuous_scale='Blues')
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        if 'Channel' in data['channel_attribution'].columns and 'Revenue' in data['channel_attribution'].columns:
-            st.subheader("Revenue by Channel")
-            fig = px.pie(data['channel_attribution'], 
-                       values='Revenue', names='Channel',
-                       hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    st.subheader("Channel Attribution Data")
-    st.dataframe(data['channel_attribution'], use_container_width=True)
-
-# Product Sales Section
-elif analysis_type == "Product Sales":
-    st.header("🛍️ Product Sales Analysis")
+    # Show columns
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
     
     # KPIs
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        total_products = len(data['product_sales'])
-        st.metric("Total Products", total_products)
+        st.metric("Total Campaigns", len(df))
     
     with col2:
-        if 'Sales' in data['product_sales'].columns:
-            total_sales = data['product_sales']['Sales'].sum()
-            st.metric("Total Sales", f"${total_sales:,.0f}")
+        budget_col = safe_column(df, ['Budget', 'budget', 'Campaign_Budget', 'Spend'])
+        if budget_col:
+            st.metric("Total Budget", f"${df[budget_col].sum():,.0f}")
     
     with col3:
-        if 'Quantity' in data['product_sales'].columns:
-            total_quantity = data['product_sales']['Quantity'].sum()
-            st.metric("Total Units Sold", f"{total_quantity:,}")
+        conv_col = safe_column(df, ['Conversions', 'conversions', 'Total_Conversions'])
+        if conv_col:
+            st.metric("Total Conversions", f"{df[conv_col].sum():,}")
     
     st.markdown("---")
     
@@ -352,65 +283,175 @@ elif analysis_type == "Product Sales":
     col1, col2 = st.columns(2)
     
     with col1:
-        if 'Product' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
-            st.subheader("Top 10 Products by Sales")
-            top_products = data['product_sales'].nlargest(10, 'Sales')
-            fig = px.bar(top_products, x='Product', y='Sales',
-                       color='Sales',
+        # Find campaign name and metric columns
+        name_col = safe_column(df, ['CampaignName', 'Campaign_Name', 'Campaign', 'Name'])
+        metric_col = safe_column(df, ['Conversions', 'Revenue', 'Sales', 'Clicks'])
+        
+        if name_col and metric_col:
+            st.subheader(f"{metric_col} by Campaign")
+            fig = px.bar(df, x=name_col, y=metric_col,
+                       color=metric_col,
+                       color_continuous_scale='Viridis')
+            fig.update_xaxis(tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        budget_col = safe_column(df, ['Budget', 'Spend', 'Cost'])
+        roi_col = safe_column(df, ['ROI', 'ROAS', 'Return'])
+        
+        if budget_col and roi_col:
+            st.subheader("Budget vs ROI")
+            fig = px.scatter(df, x=budget_col, y=roi_col,
+                           color=roi_col,
+                           color_continuous_scale='RdYlGn')
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Campaign Data")
+    st.dataframe(df, use_container_width=True)
+
+# Channel Attribution
+elif analysis_type == "Channel Attribution":
+    st.header("📱 Channel Attribution Analysis")
+    
+    df = data['channel_attribution']
+    
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        channel_col = safe_column(df, ['Channel', 'channel', 'Marketing_Channel'])
+        conv_col = safe_column(df, ['Conversions', 'conversions', 'Total_Conversions'])
+        
+        if channel_col and conv_col:
+            st.subheader("Conversions by Channel")
+            fig = px.bar(df, x=channel_col, y=conv_col,
+                       color=conv_col,
+                       color_continuous_scale='Blues')
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        revenue_col = safe_column(df, ['Revenue', 'revenue', 'Sales', 'Amount'])
+        
+        if channel_col and revenue_col:
+            st.subheader("Revenue by Channel")
+            fig = px.pie(df, values=revenue_col, names=channel_col, hole=0.4)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.dataframe(df, use_container_width=True)
+
+# Product Sales
+elif analysis_type == "Product Sales":
+    st.header("🛍️ Product Sales Analysis")
+    
+    df = data['product_sales']
+    
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
+    
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total Products", len(df))
+    
+    with col2:
+        sales_col = safe_column(df, ['Sales', 'Revenue', 'Total_Sales', 'Amount'])
+        if sales_col:
+            st.metric("Total Sales", f"${df[sales_col].sum():,.0f}")
+    
+    with col3:
+        qty_col = safe_column(df, ['Quantity', 'Units', 'Qty', 'Units_Sold'])
+        if qty_col:
+            st.metric("Total Units", f"{df[qty_col].sum():,}")
+    
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        product_col = safe_column(df, ['Product', 'ProductName', 'Product_Name', 'Item'])
+        sales_col = safe_column(df, ['Sales', 'Revenue', 'Amount'])
+        
+        if product_col and sales_col:
+            st.subheader("Top 10 Products")
+            top_products = df.nlargest(10, sales_col)
+            fig = px.bar(top_products, x=product_col, y=sales_col,
+                       color=sales_col,
                        color_continuous_scale='Greens')
             fig.update_xaxis(tickangle=-45)
             st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        if 'Category' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
+        category_col = safe_column(df, ['Category', 'Product_Category', 'Type'])
+        
+        if category_col and sales_col:
             st.subheader("Sales by Category")
-            category_sales = data['product_sales'].groupby('Category')['Sales'].sum().reset_index()
-            fig = px.pie(category_sales, values='Sales', names='Category')
+            cat_sales = df.groupby(category_col)[sales_col].sum().reset_index()
+            fig = px.pie(cat_sales, values=sales_col, names=category_col)
             st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    st.subheader("Product Sales Data")
-    st.dataframe(data['product_sales'], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
-# Geographic Analysis Section
+# Geographic Analysis
 elif analysis_type == "Geographic Analysis":
     st.header("🌍 Geographic Analysis")
+    
+    df = data['geographic_data']
+    
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
     
     col1, col2 = st.columns(2)
     
     with col1:
-        if 'Region' in data['geographic_data'].columns:
+        region_col = safe_column(df, ['Region', 'region', 'Area', 'Territory'])
+        
+        if region_col:
             st.subheader("Distribution by Region")
-            region_dist = data['geographic_data']['Region'].value_counts().reset_index()
-            region_dist.columns = ['Region', 'Count']
-            fig = px.bar(region_dist, x='Region', y='Count',
+            region_dist = df[region_col].value_counts().reset_index()
+            region_dist.columns = [region_col, 'Count']
+            fig = px.bar(region_dist, x=region_col, y='Count',
                        color='Count',
                        color_continuous_scale='Reds')
             st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        if 'Country' in data['geographic_data'].columns:
-            st.subheader("Distribution by Country")
-            country_dist = data['geographic_data']['Country'].value_counts().head(10).reset_index()
-            country_dist.columns = ['Country', 'Count']
-            fig = px.pie(country_dist, values='Count', names='Country')
+        country_col = safe_column(df, ['Country', 'country', 'Nation'])
+        
+        if country_col:
+            st.subheader("Top 10 Countries")
+            country_dist = df[country_col].value_counts().head(10).reset_index()
+            country_dist.columns = [country_col, 'Count']
+            fig = px.pie(country_dist, values='Count', names=country_col)
             st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    st.subheader("Geographic Data")
-    st.dataframe(data['geographic_data'], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
-# Customer Journey Section
+# Customer Journey
 elif analysis_type == "Customer Journey":
     st.header("🛤️ Customer Journey Analysis")
     
-    # Funnel visualization
+    # Funnel Data
+    funnel_df = data['funnel_data']
+    
+    with st.expander("📝 Funnel Data Columns"):
+        st.write(list(funnel_df.columns))
+    
     st.subheader("Conversion Funnel")
     
-    if 'Stage' in data['funnel_data'].columns and 'Count' in data['funnel_data'].columns:
+    stage_col = safe_column(funnel_df, ['Stage', 'stage', 'Step', 'Funnel_Stage'])
+    count_col = safe_column(funnel_df, ['Count', 'count', 'Users', 'Visitors'])
+    
+    if stage_col and count_col:
         fig = go.Figure(go.Funnel(
-            y=data['funnel_data']['Stage'],
-            x=data['funnel_data']['Count'],
+            y=funnel_df[stage_col],
+            x=funnel_df[count_col],
             textinfo="value+percent initial"
         ))
         st.plotly_chart(fig, use_container_width=True)
@@ -421,94 +462,99 @@ elif analysis_type == "Customer Journey":
     
     with col1:
         st.subheader("Funnel Data")
-        st.dataframe(data['funnel_data'], use_container_width=True)
+        st.dataframe(funnel_df, use_container_width=True)
     
     with col2:
-        st.subheader("Customer Journey Data")
+        st.subheader("Journey Data")
         st.dataframe(data['customer_journey'].head(20), use_container_width=True)
 
-# Lead Scoring Section
+# Lead Scoring
 elif analysis_type == "Lead Scoring":
     st.header("🎯 Lead Scoring Analysis")
     
-    col1, col2, col3 = st.columns(3)
+    df = data['lead_scoring_results']
     
-    with col1:
-        if 'LeadScore' in data['lead_scoring_results'].columns:
-            avg_score = data['lead_scoring_results']['LeadScore'].mean()
-            st.metric("Average Lead Score", f"{avg_score:.2f}")
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
     
-    with col2:
-        if 'LeadScore' in data['lead_scoring_results'].columns:
-            max_score = data['lead_scoring_results']['LeadScore'].max()
-            st.metric("Max Lead Score", f"{max_score:.2f}")
+    score_col = safe_column(df, ['LeadScore', 'Score', 'Lead_Score', 'Probability'])
     
-    with col3:
-        total_leads = len(data['lead_scoring_results'])
-        st.metric("Total Leads", f"{total_leads:,}")
-    
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if 'LeadScore' in data['lead_scoring_results'].columns:
-            st.subheader("Lead Score Distribution")
-            fig = px.histogram(data['lead_scoring_results'], x='LeadScore',
-                             nbins=30,
+    if score_col:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Avg Score", f"{df[score_col].mean():.2f}")
+        
+        with col2:
+            st.metric("Max Score", f"{df[score_col].max():.2f}")
+        
+        with col3:
+            st.metric("Total Leads", len(df))
+        
+        st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Score Distribution")
+            fig = px.histogram(df, x=score_col, nbins=30,
                              color_discrete_sequence=['#9b59b6'])
             st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        if 'LeadScore' in data['lead_scoring_results'].columns:
-            st.subheader("Lead Score Box Plot")
-            fig = px.box(data['lead_scoring_results'], y='LeadScore',
+        
+        with col2:
+            st.subheader("Score Box Plot")
+            fig = px.box(df, y=score_col,
                        color_discrete_sequence=['#e74c3c'])
             st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    st.subheader("Lead Scoring Results")
-    st.dataframe(data['lead_scoring_results'], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
-# Feature Importance Section
+# Feature Importance
 elif analysis_type == "Feature Importance":
     st.header("📊 Feature Importance Analysis")
     
-    if 'Feature' in data['feature_importance'].columns and 'Importance' in data['feature_importance'].columns:
+    df = data['feature_importance']
+    
+    with st.expander("📝 Available Columns"):
+        st.write(list(df.columns))
+    
+    feature_col = safe_column(df, ['Feature', 'feature', 'Variable', 'Column'])
+    importance_col = safe_column(df, ['Importance', 'importance', 'Score', 'Weight'])
+    
+    if feature_col and importance_col:
         st.subheader("Feature Importance Ranking")
         
-        # Sort by importance
-        sorted_features = data['feature_importance'].sort_values('Importance', ascending=True)
+        sorted_df = df.sort_values(importance_col, ascending=True)
         
-        fig = px.bar(sorted_features, 
-                   x='Importance', y='Feature',
+        fig = px.bar(sorted_df, x=importance_col, y=feature_col,
                    orientation='h',
-                   color='Importance',
-                   color_continuous_scale='Viridis',
-                   title='Feature Importance Scores')
+                   color=importance_col,
+                   color_continuous_scale='Viridis')
         st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    st.subheader("Feature Importance Data")
-    st.dataframe(data['feature_importance'], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
-# Correlation Analysis Section
+# Correlation Analysis
 elif analysis_type == "Correlation Analysis":
     st.header("🔗 Correlation Analysis")
     
+    df = data['correlation_matrix']
+    
     st.subheader("Correlation Matrix Heatmap")
     
-    # Create heatmap
-    fig = px.imshow(data['correlation_matrix'],
-                   text_auto=True,
-                   aspect="auto",
-                   color_continuous_scale='RdBu_r',
-                   title='Feature Correlation Matrix')
-    st.plotly_chart(fig, use_container_width=True)
+    try:
+        fig = px.imshow(df,
+                       text_auto='.2f',
+                       aspect="auto",
+                       color_continuous_scale='RdBu_r')
+        st.plotly_chart(fig, use_container_width=True)
+    except:
+        st.info("Correlation matrix format may need adjustment")
     
     st.markdown("---")
-    st.subheader("Correlation Matrix Data")
-    st.dataframe(data['correlation_matrix'], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
 # Footer
 st.markdown("---")
@@ -518,4 +564,3 @@ st.markdown("""
         <p>Data-driven insights for better marketing decisions</p>
     </div>
     """, unsafe_allow_html=True)
-
