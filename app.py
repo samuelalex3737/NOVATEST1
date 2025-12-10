@@ -56,17 +56,17 @@ st.markdown("""
 def load_data():
     """Load all CSV files from Dataset folder"""
     try:
-        customers = pd.read_csv('Dataset/customers.csv')
-        engagement = pd.read_csv('Dataset/engagement_data.csv')
-        products = pd.read_csv('Dataset/products.csv')
-        journey = pd.read_csv('Dataset/customer_journey.csv')
-        reviews = pd.read_csv('Dataset/customer_reviews.csv')
-        geography = pd.read_csv('Dataset/geography.csv')
-        campaigns = pd.read_csv('Dataset/campaigns.csv')
-        campaign_customers = pd.read_csv('Dataset/campaign_customers.csv')
-        campaign_products = pd.read_csv('Dataset/campaign_products.csv')
-        campaign_engagement = pd.read_csv('Dataset/campaign_engagement.csv')
-        campaign_journey = pd.read_csv('Dataset/campaign_journey.csv')
+        customers = pd.read_csv('customers.csv')
+        engagement = pd.read_csv('engagement_data.csv')
+        products = pd.read_csv('products.csv')
+        journey = pd.read_csv('customer_journey.csv')
+        reviews = pd.read_csv('customer_reviews.csv')
+        geography = pd.read_csv('geography.csv')
+        campaigns = pd.read_csv('campaigns.csv')
+        campaign_customers = pd.read_csv('campaign_customers.csv')
+        campaign_products = pd.read_csv('campaign_products.csv')
+        campaign_engagement = pd.read_csv('campaign_engagement.csv')
+        campaign_journey = pd.read_csv('campaign_journey.csv')
         
         return {
             'customers': customers,
@@ -793,4 +793,5 @@ st.markdown("""
         <p>📊 Marketing Analytics Dashboard | Built with Streamlit & Plotly</p>
         <p>Data-driven insights for better marketing decisions</p>
     </div>
+
     """, unsafe_allow_html=True)
