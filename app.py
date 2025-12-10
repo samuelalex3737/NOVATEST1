@@ -28,10 +28,6 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
-    .metric-container {
-        display: flex;
-        justify-content: space-between;
-    }
     h1 {
         color: #1f77b4;
         padding-bottom: 20px;
@@ -56,33 +52,34 @@ st.markdown("""
 def load_data():
     """Load all CSV files from Dataset folder"""
     try:
-        customers = pd.read_csv('customers.csv')
-        engagement = pd.read_csv('engagement_data.csv')
-        products = pd.read_csv('products.csv')
-        journey = pd.read_csv('customer_journey.csv')
-        reviews = pd.read_csv('customer_reviews.csv')
-        geography = pd.read_csv('geography.csv')
-        campaigns = pd.read_csv('campaigns.csv')
-        campaign_customers = pd.read_csv('campaign_customers.csv')
-        campaign_products = pd.read_csv('campaign_products.csv')
-        campaign_engagement = pd.read_csv('campaign_engagement.csv')
-        campaign_journey = pd.read_csv('campaign_journey.csv')
+        campaign_performance = pd.read_csv('Dataset/campaign_performance.csv')
+        channel_attribution = pd.read_csv('Dataset/channel_attribution.csv')
+        correlation_matrix = pd.read_csv('Dataset/correlation_matrix.csv')
+        customer_data = pd.read_csv('Dataset/customer_data.csv')
+        customer_journey = pd.read_csv('Dataset/customer_journey.csv')
+        feature_importance = pd.read_csv('Dataset/feature_importance.csv')
+        funnel_data = pd.read_csv('Dataset/funnel_data.csv')
+        geographic_data = pd.read_csv('Dataset/geographic_data.csv')
+        lead_scoring_results = pd.read_csv('Dataset/lead_scoring_results.csv')
+        learning_curve = pd.read_csv('Dataset/learning_curve.csv')
+        product_sales = pd.read_csv('Dataset/product_sales.csv')
         
         return {
-            'customers': customers,
-            'engagement': engagement,
-            'products': products,
-            'journey': journey,
-            'reviews': reviews,
-            'geography': geography,
-            'campaigns': campaigns,
-            'campaign_customers': campaign_customers,
-            'campaign_products': campaign_products,
-            'campaign_engagement': campaign_engagement,
-            'campaign_journey': campaign_journey
+            'campaign_performance': campaign_performance,
+            'channel_attribution': channel_attribution,
+            'correlation_matrix': correlation_matrix,
+            'customer_data': customer_data,
+            'customer_journey': customer_journey,
+            'feature_importance': feature_importance,
+            'funnel_data': funnel_data,
+            'geographic_data': geographic_data,
+            'lead_scoring_results': lead_scoring_results,
+            'learning_curve': learning_curve,
+            'product_sales': product_sales
         }
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
+        st.info("Please ensure all CSV files are in the 'Dataset' folder")
         return None
 
 # Load all data
@@ -97,41 +94,17 @@ with st.sidebar:
     st.title("📊 Marketing Analytics")
     st.markdown("---")
     
-    # Dataset selector
+    # Analysis selector
     st.subheader("Select Analysis View")
     analysis_type = st.selectbox(
         "Choose Analysis Type",
-        ["Overview", "Customer Analysis", "Product Analysis", "Campaign Analysis", 
-         "Engagement Analysis", "Geographic Analysis", "Customer Journey"]
+        ["Overview", "Customer Analysis", "Campaign Performance", "Channel Attribution", 
+         "Product Sales", "Geographic Analysis", "Customer Journey", "Lead Scoring",
+         "Feature Importance", "Correlation Analysis"]
     )
     
     st.markdown("---")
-    st.subheader("Filters")
-    
-    # Dynamic filters based on analysis type
-    if analysis_type == "Customer Analysis":
-        income_range = st.slider(
-            "Income Range",
-            int(data['customers']['Income'].min()),
-            int(data['customers']['Income'].max()),
-            (int(data['customers']['Income'].min()), int(data['customers']['Income'].max()))
-        )
-        
-        education_filter = st.multiselect(
-            "Education Level",
-            options=data['customers']['Education'].unique(),
-            default=data['customers']['Education'].unique()
-        )
-    
-    elif analysis_type == "Campaign Analysis":
-        campaign_filter = st.multiselect(
-            "Select Campaigns",
-            options=data['campaigns']['CampaignName'].unique(),
-            default=data['campaigns']['CampaignName'].unique()
-        )
-    
-    st.markdown("---")
-    st.info("💡 **Tip**: Use filters to drill down into specific segments")
+    st.info("💡 **Tip**: Explore different views to gain insights")
 
 # Main content
 st.title("🎯 Marketing Analytics Dashboard")
@@ -145,646 +118,397 @@ if analysis_type == "Overview":
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        total_customers = len(data['customers'])
+        total_customers = len(data['customer_data'])
         st.metric("Total Customers", f"{total_customers:,}")
     
     with col2:
-        total_revenue = data['products']['Revenue'].sum()
-        st.metric("Total Revenue", f"${total_revenue:,.0f}")
+        if 'Revenue' in data['product_sales'].columns:
+            total_revenue = data['product_sales']['Revenue'].sum()
+            st.metric("Total Revenue", f"${total_revenue:,.0f}")
+        elif 'Sales' in data['product_sales'].columns:
+            total_sales = data['product_sales']['Sales'].sum()
+            st.metric("Total Sales", f"${total_sales:,.0f}")
     
     with col3:
-        avg_income = data['customers']['Income'].mean()
-        st.metric("Avg Customer Income", f"${avg_income:,.0f}")
+        total_campaigns = len(data['campaign_performance'])
+        st.metric("Total Campaigns", total_campaigns)
     
     with col4:
-        total_campaigns = len(data['campaigns'])
-        st.metric("Active Campaigns", total_campaigns)
+        if 'ConversionRate' in data['funnel_data'].columns:
+            avg_conversion = data['funnel_data']['ConversionRate'].mean()
+            st.metric("Avg Conversion Rate", f"{avg_conversion:.2f}%")
+        elif 'Conversions' in data['funnel_data'].columns:
+            total_conversions = data['funnel_data']['Conversions'].sum()
+            st.metric("Total Conversions", f"{total_conversions:,}")
     
     with col5:
-        avg_engagement = data['engagement']['EngagementScore'].mean()
-        st.metric("Avg Engagement Score", f"{avg_engagement:.2f}")
+        if 'LeadScore' in data['lead_scoring_results'].columns:
+            avg_lead_score = data['lead_scoring_results']['LeadScore'].mean()
+            st.metric("Avg Lead Score", f"{avg_lead_score:.2f}")
     
     st.markdown("---")
     
-    # Two column layout for charts
+    # Display sample data from each dataset
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Revenue by Product Category")
-        revenue_by_category = data['products'].groupby('Category')['Revenue'].sum().reset_index()
-        fig = px.pie(revenue_by_category, values='Revenue', names='Category', 
-                     color_discrete_sequence=px.colors.qualitative.Set3)
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
+        st.subheader("📊 Campaign Performance Overview")
+        st.dataframe(data['campaign_performance'].head(10), use_container_width=True)
     
     with col2:
-        st.subheader("Customer Distribution by Education")
-        education_dist = data['customers']['Education'].value_counts().reset_index()
-        education_dist.columns = ['Education', 'Count']
-        fig = px.bar(education_dist, x='Education', y='Count', 
-                     color='Count', color_continuous_scale='Blues')
-        st.plotly_chart(fig, use_container_width=True)
+        st.subheader("👥 Customer Data Sample")
+        st.dataframe(data['customer_data'].head(10), use_container_width=True)
     
-    # Full width chart
-    st.subheader("Campaign Performance Overview")
-    campaign_perf = data['campaigns'].merge(
-        data['campaign_customers'].groupby('CampaignID')['CustomerID'].count().reset_index(),
-        on='CampaignID', how='left'
-    )
-    campaign_perf.columns = ['CampaignID', 'CampaignName', 'StartDate', 'EndDate', 
-                             'Budget', 'Channel', 'Customers']
+    # Visualizations
+    st.markdown("---")
     
-    fig = px.bar(campaign_perf, x='CampaignName', y='Customers', color='Channel',
-                 title='Customer Reach by Campaign and Channel')
-    st.plotly_chart(fig, use_container_width=True)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Product Sales Distribution")
+        if 'Product' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
+            fig = px.bar(data['product_sales'].head(10), 
+                        x='Product', y='Sales',
+                        color='Sales',
+                        color_continuous_scale='Blues')
+            fig.update_xaxis(tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.subheader("Geographic Distribution")
+        if 'Region' in data['geographic_data'].columns:
+            region_dist = data['geographic_data']['Region'].value_counts().reset_index()
+            region_dist.columns = ['Region', 'Count']
+            fig = px.pie(region_dist, values='Count', names='Region', hole=0.4)
+            st.plotly_chart(fig, use_container_width=True)
 
 # Customer Analysis Section
 elif analysis_type == "Customer Analysis":
     st.header("👥 Customer Analysis")
     
-    # Apply filters
-    filtered_customers = data['customers'][
-        (data['customers']['Income'] >= income_range[0]) &
-        (data['customers']['Income'] <= income_range[1]) &
-        (data['customers']['Education'].isin(education_filter))
-    ]
-    
-    # KPIs
-    col1, col2, col3, col4 = st.columns(4)
+    # Display customer data info
+    st.subheader("Customer Data Overview")
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Filtered Customers", f"{len(filtered_customers):,}")
+        st.metric("Total Customers", len(data['customer_data']))
     
     with col2:
-        avg_age = filtered_customers['Age'].mean()
-        st.metric("Average Age", f"{avg_age:.1f}")
+        if 'Age' in data['customer_data'].columns:
+            avg_age = data['customer_data']['Age'].mean()
+            st.metric("Average Age", f"{avg_age:.1f}")
     
     with col3:
-        avg_income_filtered = filtered_customers['Income'].mean()
-        st.metric("Avg Income", f"${avg_income_filtered:,.0f}")
-    
-    with col4:
-        married_pct = (filtered_customers['Marital_Status'] == 'Married').sum() / len(filtered_customers) * 100
-        st.metric("Married %", f"{married_pct:.1f}%")
+        if 'Income' in data['customer_data'].columns:
+            avg_income = data['customer_data']['Income'].mean()
+            st.metric("Avg Income", f"${avg_income:,.0f}")
     
     st.markdown("---")
     
     # Tabs for different analyses
-    tab1, tab2, tab3 = st.tabs(["Demographics", "Income Analysis", "Segmentation"])
+    tab1, tab2, tab3 = st.tabs(["Customer Demographics", "Data Table", "Statistics"])
     
     with tab1:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("Age Distribution")
-            fig = px.histogram(filtered_customers, x='Age', nbins=30, 
-                             color_discrete_sequence=['#1f77b4'])
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            # Age distribution if available
+            if 'Age' in data['customer_data'].columns:
+                st.subheader("Age Distribution")
+                fig = px.histogram(data['customer_data'], x='Age', 
+                                 nbins=30, color_discrete_sequence=['#1f77b4'])
+                st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.subheader("Marital Status Distribution")
-            marital_dist = filtered_customers['Marital_Status'].value_counts().reset_index()
-            marital_dist.columns = ['Status', 'Count']
-            fig = px.pie(marital_dist, values='Count', names='Status', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
+            # Income distribution if available
+            if 'Income' in data['customer_data'].columns:
+                st.subheader("Income Distribution")
+                fig = px.box(data['customer_data'], y='Income',
+                           color_discrete_sequence=['#2ecc71'])
+                st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Income by Education Level")
-            fig = px.box(filtered_customers, x='Education', y='Income', 
-                        color='Education', color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Income vs Age")
-            fig = px.scatter(filtered_customers, x='Age', y='Income', 
-                           color='Education', size='Income', 
-                           hover_data=['Marital_Status'])
-            st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Customer Data Table")
+        st.dataframe(data['customer_data'], use_container_width=True)
     
     with tab3:
-        st.subheader("Customer Segmentation Matrix")
-        
-        # Create income segments
-        filtered_customers['Income_Segment'] = pd.cut(filtered_customers['Income'], 
-                                                      bins=3, labels=['Low', 'Medium', 'High'])
-        filtered_customers['Age_Segment'] = pd.cut(filtered_customers['Age'], 
-                                                   bins=3, labels=['Young', 'Middle', 'Senior'])
-        
-        segment_matrix = filtered_customers.groupby(['Income_Segment', 'Age_Segment']).size().reset_index()
-        segment_matrix.columns = ['Income_Segment', 'Age_Segment', 'Count']
-        
-        fig = px.density_heatmap(segment_matrix, x='Age_Segment', y='Income_Segment', 
-                                z='Count', color_continuous_scale='YlOrRd')
-        st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Statistical Summary")
+        st.dataframe(data['customer_data'].describe(), use_container_width=True)
 
-# Product Analysis Section
-elif analysis_type == "Product Analysis":
-    st.header("🛍️ Product Analysis")
+# Campaign Performance Section
+elif analysis_type == "Campaign Performance":
+    st.header("📢 Campaign Performance Analysis")
     
     # KPIs
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_products = len(data['products'])
+        st.metric("Total Campaigns", len(data['campaign_performance']))
+    
+    with col2:
+        if 'Budget' in data['campaign_performance'].columns:
+            total_budget = data['campaign_performance']['Budget'].sum()
+            st.metric("Total Budget", f"${total_budget:,.0f}")
+    
+    with col3:
+        if 'Conversions' in data['campaign_performance'].columns:
+            total_conversions = data['campaign_performance']['Conversions'].sum()
+            st.metric("Total Conversions", f"{total_conversions:,}")
+    
+    with col4:
+        if 'ROI' in data['campaign_performance'].columns:
+            avg_roi = data['campaign_performance']['ROI'].mean()
+            st.metric("Average ROI", f"{avg_roi:.2f}%")
+    
+    st.markdown("---")
+    
+    # Visualizations
+    tab1, tab2, tab3 = st.tabs(["Performance Metrics", "Data Table", "Trends"])
+    
+    with tab1:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if 'CampaignName' in data['campaign_performance'].columns and 'Conversions' in data['campaign_performance'].columns:
+                st.subheader("Conversions by Campaign")
+                fig = px.bar(data['campaign_performance'], 
+                           x='CampaignName', y='Conversions',
+                           color='Conversions',
+                           color_continuous_scale='Viridis')
+                fig.update_xaxis(tickangle=-45)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            if 'Budget' in data['campaign_performance'].columns and 'ROI' in data['campaign_performance'].columns:
+                st.subheader("Budget vs ROI")
+                fig = px.scatter(data['campaign_performance'], 
+                               x='Budget', y='ROI',
+                               size='Conversions' if 'Conversions' in data['campaign_performance'].columns else None,
+                               color='ROI',
+                               color_continuous_scale='RdYlGn')
+                st.plotly_chart(fig, use_container_width=True)
+    
+    with tab2:
+        st.subheader("Campaign Performance Data")
+        st.dataframe(data['campaign_performance'], use_container_width=True)
+    
+    with tab3:
+        st.subheader("Statistical Summary")
+        st.dataframe(data['campaign_performance'].describe(), use_container_width=True)
+
+# Channel Attribution Section
+elif analysis_type == "Channel Attribution":
+    st.header("📱 Channel Attribution Analysis")
+    
+    st.subheader("Channel Performance Overview")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if 'Channel' in data['channel_attribution'].columns and 'Conversions' in data['channel_attribution'].columns:
+            st.subheader("Conversions by Channel")
+            fig = px.bar(data['channel_attribution'], 
+                       x='Channel', y='Conversions',
+                       color='Conversions',
+                       color_continuous_scale='Blues')
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        if 'Channel' in data['channel_attribution'].columns and 'Revenue' in data['channel_attribution'].columns:
+            st.subheader("Revenue by Channel")
+            fig = px.pie(data['channel_attribution'], 
+                       values='Revenue', names='Channel',
+                       hole=0.4)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Channel Attribution Data")
+    st.dataframe(data['channel_attribution'], use_container_width=True)
+
+# Product Sales Section
+elif analysis_type == "Product Sales":
+    st.header("🛍️ Product Sales Analysis")
+    
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        total_products = len(data['product_sales'])
         st.metric("Total Products", total_products)
     
     with col2:
-        total_revenue = data['products']['Revenue'].sum()
-        st.metric("Total Revenue", f"${total_revenue:,.0f}")
+        if 'Sales' in data['product_sales'].columns:
+            total_sales = data['product_sales']['Sales'].sum()
+            st.metric("Total Sales", f"${total_sales:,.0f}")
     
     with col3:
-        avg_price = data['products']['Price'].mean()
-        st.metric("Avg Product Price", f"${avg_price:.2f}")
-    
-    with col4:
-        total_quantity = data['products']['QuantitySold'].sum()
-        st.metric("Total Units Sold", f"{total_quantity:,}")
+        if 'Quantity' in data['product_sales'].columns:
+            total_quantity = data['product_sales']['Quantity'].sum()
+            st.metric("Total Units Sold", f"{total_quantity:,}")
     
     st.markdown("---")
     
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["Revenue Analysis", "Product Performance", "Category Insights"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Top 10 Products by Revenue")
-            top_products = data['products'].nlargest(10, 'Revenue')[['ProductName', 'Revenue']]
-            fig = px.bar(top_products, x='Revenue', y='ProductName', 
-                        orientation='h', color='Revenue', 
-                        color_continuous_scale='Viridis')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Revenue by Category")
-            category_revenue = data['products'].groupby('Category')['Revenue'].sum().reset_index()
-            fig = px.pie(category_revenue, values='Revenue', names='Category', 
-                        color_discrete_sequence=px.colors.qualitative.Bold)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        st.subheader("Price vs Quantity Sold Analysis")
-        fig = px.scatter(data['products'], x='Price', y='QuantitySold', 
-                        color='Category', size='Revenue', 
-                        hover_data=['ProductName'], 
-                        title='Product Performance Matrix')
-        st.plotly_chart(fig, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Top Selling Products (by Quantity)")
-            top_selling = data['products'].nlargest(10, 'QuantitySold')[['ProductName', 'QuantitySold']]
-            fig = px.bar(top_selling, x='QuantitySold', y='ProductName', 
-                        orientation='h', color_discrete_sequence=['#ff7f0e'])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Price Distribution by Category")
-            fig = px.violin(data['products'], x='Category', y='Price', 
-                          color='Category', box=True)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab3:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Category Performance Metrics")
-            category_stats = data['products'].groupby('Category').agg({
-                'Revenue': 'sum',
-                'QuantitySold': 'sum',
-                'Price': 'mean'
-            }).reset_index()
-            category_stats.columns = ['Category', 'Total Revenue', 'Total Quantity', 'Avg Price']
-            st.dataframe(category_stats.style.format({
-                'Total Revenue': '${:,.0f}',
-                'Total Quantity': '{:,.0f}',
-                'Avg Price': '${:.2f}'
-            }), use_container_width=True)
-        
-        with col2:
-            st.subheader("Revenue Contribution by Category")
-            fig = go.Figure(data=[go.Pie(
-                labels=category_stats['Category'],
-                values=category_stats['Total Revenue'],
-                hole=.3,
-                marker_colors=px.colors.qualitative.Set2
-            )])
-            st.plotly_chart(fig, use_container_width=True)
-
-# Campaign Analysis Section
-elif analysis_type == "Campaign Analysis":
-    st.header("📢 Campaign Analysis")
-    
-    # Filter campaigns
-    filtered_campaigns = data['campaigns'][data['campaigns']['CampaignName'].isin(campaign_filter)]
-    
-    # Merge campaign data
-    campaign_metrics = filtered_campaigns.merge(
-        data['campaign_customers'].groupby('CampaignID').size().reset_index(name='Customers'),
-        on='CampaignID', how='left'
-    )
-    
-    # KPIs
-    col1, col2, col3, col4 = st.columns(4)
+    # Visualizations
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("Active Campaigns", len(filtered_campaigns))
-    
-    with col2:
-        total_budget = filtered_campaigns['Budget'].sum()
-        st.metric("Total Budget", f"${total_budget:,.0f}")
-    
-    with col3:
-        total_reach = campaign_metrics['Customers'].sum()
-        st.metric("Total Customer Reach", f"{total_reach:,}")
-    
-    with col4:
-        avg_budget = filtered_campaigns['Budget'].mean()
-        st.metric("Avg Campaign Budget", f"${avg_budget:,.0f}")
-    
-    st.markdown("---")
-    
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["Campaign Performance", "Channel Analysis", "ROI Analysis"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Customer Reach by Campaign")
-            fig = px.bar(campaign_metrics, x='CampaignName', y='Customers', 
-                        color='Channel', title='Campaign Reach')
+        if 'Product' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
+            st.subheader("Top 10 Products by Sales")
+            top_products = data['product_sales'].nlargest(10, 'Sales')
+            fig = px.bar(top_products, x='Product', y='Sales',
+                       color='Sales',
+                       color_continuous_scale='Greens')
             fig.update_xaxis(tickangle=-45)
             st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Budget Allocation by Campaign")
-            fig = px.pie(filtered_campaigns, values='Budget', names='CampaignName', 
-                        hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Budget by Channel")
-            channel_budget = filtered_campaigns.groupby('Channel')['Budget'].sum().reset_index()
-            fig = px.bar(channel_budget, x='Channel', y='Budget', 
-                        color='Budget', color_continuous_scale='Blues')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Campaign Count by Channel")
-            channel_count = filtered_campaigns['Channel'].value_counts().reset_index()
-            channel_count.columns = ['Channel', 'Count']
-            fig = px.pie(channel_count, values='Count', names='Channel')
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab3:
-        st.subheader("Campaign Efficiency Metrics")
-        
-        # Calculate cost per customer
-        campaign_metrics['Cost_Per_Customer'] = campaign_metrics['Budget'] / campaign_metrics['Customers']
-        
-        fig = px.scatter(campaign_metrics, x='Budget', y='Customers', 
-                        size='Cost_Per_Customer', color='Channel',
-                        hover_data=['CampaignName'],
-                        title='Budget vs Customer Reach (Size = Cost per Customer)')
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.subheader("Campaign Performance Table")
-        display_df = campaign_metrics[['CampaignName', 'Channel', 'Budget', 'Customers', 'Cost_Per_Customer']]
-        st.dataframe(display_df.style.format({
-            'Budget': '${:,.0f}',
-            'Customers': '{:,.0f}',
-            'Cost_Per_Customer': '${:.2f}'
-        }), use_container_width=True)
-
-# Engagement Analysis Section
-elif analysis_type == "Engagement Analysis":
-    st.header("💬 Engagement Analysis")
-    
-    # KPIs
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        avg_engagement = data['engagement']['EngagementScore'].mean()
-        st.metric("Avg Engagement Score", f"{avg_engagement:.2f}")
     
     with col2:
-        total_interactions = data['engagement']['Interactions'].sum()
-        st.metric("Total Interactions", f"{total_interactions:,}")
-    
-    with col3:
-        avg_time = data['engagement']['TimeSpent'].mean()
-        st.metric("Avg Time Spent (min)", f"{avg_time:.1f}")
-    
-    with col4:
-        total_reviews = len(data['reviews'])
-        st.metric("Total Reviews", f"{total_reviews:,}")
+        if 'Category' in data['product_sales'].columns and 'Sales' in data['product_sales'].columns:
+            st.subheader("Sales by Category")
+            category_sales = data['product_sales'].groupby('Category')['Sales'].sum().reset_index()
+            fig = px.pie(category_sales, values='Sales', names='Category')
+            st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["Engagement Metrics", "Customer Reviews", "Interaction Analysis"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Engagement Score Distribution")
-            fig = px.histogram(data['engagement'], x='EngagementScore', 
-                             nbins=30, color_discrete_sequence=['#2ecc71'])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Time Spent Distribution")
-            fig = px.box(data['engagement'], y='TimeSpent', 
-                        color_discrete_sequence=['#e74c3c'])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        st.subheader("Engagement Score vs Interactions")
-        fig = px.scatter(data['engagement'], x='Interactions', y='EngagementScore', 
-                        color='TimeSpent', size='Interactions',
-                        color_continuous_scale='Viridis')
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Rating Distribution")
-            rating_dist = data['reviews']['Rating'].value_counts().sort_index().reset_index()
-            rating_dist.columns = ['Rating', 'Count']
-            fig = px.bar(rating_dist, x='Rating', y='Count', 
-                        color='Count', color_continuous_scale='RdYlGn')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Average Rating")
-            avg_rating = data['reviews']['Rating'].mean()
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=avg_rating,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                gauge={'axis': {'range': [None, 5]},
-                       'bar': {'color': "darkblue"},
-                       'steps': [
-                           {'range': [0, 2], 'color': "lightgray"},
-                           {'range': [2, 4], 'color': "gray"},
-                           {'range': [4, 5], 'color': "lightgreen"}],
-                       'threshold': {'line': {'color': "red", 'width': 4}, 
-                                   'thickness': 0.75, 'value': 4.5}}))
-            st.plotly_chart(fig, use_container_width=True)
-        
-        st.subheader("Recent Reviews Sample")
-        st.dataframe(data['reviews'][['CustomerID', 'ProductID', 'Rating', 'ReviewText']].head(10), 
-                    use_container_width=True)
-    
-    with tab3:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Top 20 Most Engaged Customers")
-            top_engaged = data['engagement'].nlargest(20, 'EngagementScore')[['CustomerID', 'EngagementScore']]
-            fig = px.bar(top_engaged, x='CustomerID', y='EngagementScore', 
-                        color='EngagementScore', color_continuous_scale='Plasma')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Interaction Patterns")
-            fig = px.scatter(data['engagement'], x='TimeSpent', y='Interactions', 
-                           color='EngagementScore', 
-                           color_continuous_scale='Turbo',
-                           title='Time Spent vs Interactions')
-            st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Product Sales Data")
+    st.dataframe(data['product_sales'], use_container_width=True)
 
 # Geographic Analysis Section
 elif analysis_type == "Geographic Analysis":
     st.header("🌍 Geographic Analysis")
     
-    # Merge geography with customers
-    geo_customers = data['geography'].merge(data['customers'], on='CustomerID', how='left')
-    
-    # KPIs
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
-        unique_countries = geo_customers['Country'].nunique()
-        st.metric("Countries", unique_countries)
+        if 'Region' in data['geographic_data'].columns:
+            st.subheader("Distribution by Region")
+            region_dist = data['geographic_data']['Region'].value_counts().reset_index()
+            region_dist.columns = ['Region', 'Count']
+            fig = px.bar(region_dist, x='Region', y='Count',
+                       color='Count',
+                       color_continuous_scale='Reds')
+            st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        unique_cities = geo_customers['City'].nunique()
-        st.metric("Cities", unique_cities)
-    
-    with col3:
-        avg_income_geo = geo_customers['Income'].mean()
-        st.metric("Avg Income", f"${avg_income_geo:,.0f}")
-    
-    with col4:
-        total_customers_geo = len(geo_customers)
-        st.metric("Total Customers", f"{total_customers_geo:,}")
+        if 'Country' in data['geographic_data'].columns:
+            st.subheader("Distribution by Country")
+            country_dist = data['geographic_data']['Country'].value_counts().head(10).reset_index()
+            country_dist.columns = ['Country', 'Count']
+            fig = px.pie(country_dist, values='Count', names='Country')
+            st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
-    
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["Country Analysis", "City Analysis", "Regional Insights"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Customer Distribution by Country")
-            country_dist = geo_customers['Country'].value_counts().reset_index()
-            country_dist.columns = ['Country', 'Customers']
-            fig = px.bar(country_dist, x='Country', y='Customers', 
-                        color='Customers', color_continuous_scale='Blues')
-            fig.update_xaxis(tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Market Share by Country")
-            fig = px.pie(country_dist, values='Customers', names='Country', 
-                        hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Top 15 Cities by Customer Count")
-            city_dist = geo_customers['City'].value_counts().head(15).reset_index()
-            city_dist.columns = ['City', 'Customers']
-            fig = px.bar(city_dist, x='Customers', y='City', 
-                        orientation='h', color='Customers', 
-                        color_continuous_scale='Greens')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Average Income by Top Cities")
-            city_income = geo_customers.groupby('City')['Income'].mean().nlargest(15).reset_index()
-            fig = px.bar(city_income, x='Income', y='City', 
-                        orientation='h', color='Income', 
-                        color_continuous_scale='Oranges')
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab3:
-        st.subheader("Geographic Performance Matrix")
-        
-        geo_summary = geo_customers.groupby('Country').agg({
-            'CustomerID': 'count',
-            'Income': 'mean',
-            'Age': 'mean'
-        }).reset_index()
-        geo_summary.columns = ['Country', 'Customer Count', 'Avg Income', 'Avg Age']
-        
-        st.dataframe(geo_summary.style.format({
-            'Customer Count': '{:,.0f}',
-            'Avg Income': '${:,.0f}',
-            'Avg Age': '{:.1f}'
-        }), use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Income Distribution by Country")
-            fig = px.box(geo_customers, x='Country', y='Income', 
-                        color='Country')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Age Distribution by Country")
-            fig = px.violin(geo_customers, x='Country', y='Age', 
-                          color='Country', box=True)
-            st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Geographic Data")
+    st.dataframe(data['geographic_data'], use_container_width=True)
 
 # Customer Journey Section
 elif analysis_type == "Customer Journey":
     st.header("🛤️ Customer Journey Analysis")
     
-    # KPIs
-    col1, col2, col3, col4 = st.columns(4)
+    # Funnel visualization
+    st.subheader("Conversion Funnel")
     
-    with col1:
-        total_touchpoints = len(data['journey'])
-        st.metric("Total Touchpoints", f"{total_touchpoints:,}")
-    
-    with col2:
-        unique_customers_journey = data['journey']['CustomerID'].nunique()
-        st.metric("Customers Tracked", f"{unique_customers_journey:,}")
-    
-    with col3:
-        conversion_rate = (data['journey']['Conversion'] == 'Yes').sum() / len(data['journey']) * 100
-        st.metric("Conversion Rate", f"{conversion_rate:.1f}%")
-    
-    with col4:
-        avg_touchpoints = data['journey'].groupby('CustomerID').size().mean()
-        st.metric("Avg Touchpoints/Customer", f"{avg_touchpoints:.1f}")
+    if 'Stage' in data['funnel_data'].columns and 'Count' in data['funnel_data'].columns:
+        fig = go.Figure(go.Funnel(
+            y=data['funnel_data']['Stage'],
+            x=data['funnel_data']['Count'],
+            textinfo="value+percent initial"
+        ))
+        st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
     
-    # Tabs
-    tab1, tab2, tab3 = st.tabs(["Touchpoint Analysis", "Conversion Funnel", "Journey Patterns"])
+    col1, col2 = st.columns(2)
     
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Touchpoint Distribution")
-            touchpoint_dist = data['journey']['Touchpoint'].value_counts().reset_index()
-            touchpoint_dist.columns = ['Touchpoint', 'Count']
-            fig = px.bar(touchpoint_dist, x='Touchpoint', y='Count', 
-                        color='Count', color_continuous_scale='Purples')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Conversion by Touchpoint")
-            conversion_by_tp = data['journey'].groupby('Touchpoint')['Conversion'].apply(
-                lambda x: (x == 'Yes').sum() / len(x) * 100
-            ).reset_index()
-            conversion_by_tp.columns = ['Touchpoint', 'Conversion Rate']
-            fig = px.bar(conversion_by_tp, x='Touchpoint', y='Conversion Rate', 
-                        color='Conversion Rate', color_continuous_scale='RdYlGn')
+    with col1:
+        st.subheader("Funnel Data")
+        st.dataframe(data['funnel_data'], use_container_width=True)
+    
+    with col2:
+        st.subheader("Customer Journey Data")
+        st.dataframe(data['customer_journey'].head(20), use_container_width=True)
+
+# Lead Scoring Section
+elif analysis_type == "Lead Scoring":
+    st.header("🎯 Lead Scoring Analysis")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if 'LeadScore' in data['lead_scoring_results'].columns:
+            avg_score = data['lead_scoring_results']['LeadScore'].mean()
+            st.metric("Average Lead Score", f"{avg_score:.2f}")
+    
+    with col2:
+        if 'LeadScore' in data['lead_scoring_results'].columns:
+            max_score = data['lead_scoring_results']['LeadScore'].max()
+            st.metric("Max Lead Score", f"{max_score:.2f}")
+    
+    with col3:
+        total_leads = len(data['lead_scoring_results'])
+        st.metric("Total Leads", f"{total_leads:,}")
+    
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if 'LeadScore' in data['lead_scoring_results'].columns:
+            st.subheader("Lead Score Distribution")
+            fig = px.histogram(data['lead_scoring_results'], x='LeadScore',
+                             nbins=30,
+                             color_discrete_sequence=['#9b59b6'])
             st.plotly_chart(fig, use_container_width=True)
     
-    with tab2:
-        st.subheader("Conversion Funnel")
+    with col2:
+        if 'LeadScore' in data['lead_scoring_results'].columns:
+            st.subheader("Lead Score Box Plot")
+            fig = px.box(data['lead_scoring_results'], y='LeadScore',
+                       color_discrete_sequence=['#e74c3c'])
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Lead Scoring Results")
+    st.dataframe(data['lead_scoring_results'], use_container_width=True)
+
+# Feature Importance Section
+elif analysis_type == "Feature Importance":
+    st.header("📊 Feature Importance Analysis")
+    
+    if 'Feature' in data['feature_importance'].columns and 'Importance' in data['feature_importance'].columns:
+        st.subheader("Feature Importance Ranking")
         
-        # Create funnel data
-        touchpoint_order = ['Website', 'Email', 'Social Media', 'Store Visit', 'Purchase']
-        funnel_data = []
+        # Sort by importance
+        sorted_features = data['feature_importance'].sort_values('Importance', ascending=True)
         
-        for tp in touchpoint_order:
-            if tp in data['journey']['Touchpoint'].values:
-                count = len(data['journey'][data['journey']['Touchpoint'] == tp])
-                funnel_data.append({'Stage': tp, 'Count': count})
-        
-        funnel_df = pd.DataFrame(funnel_data)
-        
-        fig = go.Figure(go.Funnel(
-            y=funnel_df['Stage'],
-            x=funnel_df['Count'],
-            textinfo="value+percent initial",
-            marker={"color": ["deepskyblue", "lightsalmon", "tan", "teal", "silver"]}
-        ))
+        fig = px.bar(sorted_features, 
+                   x='Importance', y='Feature',
+                   orientation='h',
+                   color='Importance',
+                   color_continuous_scale='Viridis',
+                   title='Feature Importance Scores')
         st.plotly_chart(fig, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Overall Conversion Status")
-            conversion_status = data['journey']['Conversion'].value_counts().reset_index()
-            conversion_status.columns = ['Status', 'Count']
-            fig = px.pie(conversion_status, values='Count', names='Status', 
-                        color_discrete_sequence=['#ff6b6b', '#51cf66'])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Conversion Metrics")
-            total_journeys = len(data['journey'])
-            conversions = (data['journey']['Conversion'] == 'Yes').sum()
-            non_conversions = total_journeys - conversions
-            
-            metrics_df = pd.DataFrame({
-                'Metric': ['Total Journeys', 'Conversions', 'Non-Conversions', 'Conversion Rate'],
-                'Value': [total_journeys, conversions, non_conversions, f"{conversion_rate:.2f}%"]
-            })
-            st.dataframe(metrics_df, use_container_width=True, hide_index=True)
     
-    with tab3:
-        st.subheader("Customer Journey Patterns")
-        
-        # Journey length analysis
-        journey_length = data['journey'].groupby('CustomerID').size().reset_index()
-        journey_length.columns = ['CustomerID', 'Touchpoints']
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Journey Length Distribution")
-            fig = px.histogram(journey_length, x='Touchpoints', 
-                             nbins=20, color_discrete_sequence=['#9b59b6'])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Avg Touchpoints by Conversion")
-            journey_conversion = data['journey'].merge(
-                data['journey'].groupby('CustomerID')['Conversion'].first().reset_index(),
-                on='CustomerID', suffixes=('', '_final')
-            )
-            
-            avg_tp_conversion = journey_conversion.groupby(['CustomerID', 'Conversion_final']).size().reset_index()
-            avg_tp_conversion.columns = ['CustomerID', 'Converted', 'Touchpoints']
-            
-            fig = px.box(avg_tp_conversion, x='Converted', y='Touchpoints', 
-                        color='Converted', color_discrete_sequence=['#e74c3c', '#2ecc71'])
-            st.plotly_chart(fig, use_container_width=True)
+    st.markdown("---")
+    st.subheader("Feature Importance Data")
+    st.dataframe(data['feature_importance'], use_container_width=True)
+
+# Correlation Analysis Section
+elif analysis_type == "Correlation Analysis":
+    st.header("🔗 Correlation Analysis")
+    
+    st.subheader("Correlation Matrix Heatmap")
+    
+    # Create heatmap
+    fig = px.imshow(data['correlation_matrix'],
+                   text_auto=True,
+                   aspect="auto",
+                   color_continuous_scale='RdBu_r',
+                   title='Feature Correlation Matrix')
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Correlation Matrix Data")
+    st.dataframe(data['correlation_matrix'], use_container_width=True)
 
 # Footer
 st.markdown("---")
@@ -793,5 +517,4 @@ st.markdown("""
         <p>📊 Marketing Analytics Dashboard | Built with Streamlit & Plotly</p>
         <p>Data-driven insights for better marketing decisions</p>
     </div>
-
     """, unsafe_allow_html=True)
